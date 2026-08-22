@@ -968,16 +968,23 @@ function World:load()
     waitButton = function(done)
       self:waitForButton(done)
     end,
+    -- `def.name ~= ""` guards both of these: an empty string is truthy in
+    -- Lua, so a row whose extracted ROM text decoded to nothing (a dummy
+    -- ItemNames/PokemonNames slot, its terminator sitting right at the read
+    -- address) used to win over the id/placeholder fallback below it and
+    -- print as a blank name instead -- the "<PLAYER> receives ." reported
+    -- against a real Gold build (gen1recomp#1642).
     getMonName = function(speciesIndex)
       local id, def = speciesByIndex(
         self.game and self.game.data and self.game.data.pokemon,
         speciesIndex)
-      return (def and def.name) or id or "?"
+      if def and def.name and def.name ~= "" then return def.name end
+      return id or "?"
     end,
     getItemName = function(itemIndex)
       local id, def = itemByIndex(
         self.game and self.game.data and self.game.data.items, itemIndex)
-      if def and def.name then return def.name end
+      if def and def.name and def.name ~= "" then return def.name end
       return id or ("ITEM" .. tostring(itemIndex))
     end,
     -- CheckItemPocket (engine/items/items.asm) on wCurItem: the pocket id
