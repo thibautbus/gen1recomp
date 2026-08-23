@@ -72,8 +72,17 @@ local SAVING_PROMPT = { "SAVING… DON'T TURN", "OFF THE POWER." }
 -- style split load_engine_overrides uses elsewhere requires a non-empty
 -- override for every line, so it cannot express "this line is blank" the
 -- way an embedded "\n"-less string can.
-local OVERWRITE_PROMPT_SOURCE = Strings.source(table.concat(OVERWRITE_PROMPT, "\n"))
-local SAVING_PROMPT_SOURCE = Strings.source(table.concat(SAVING_PROMPT, "\n"))
+--
+-- Written as literals, not `table.concat(OVERWRITE_PROMPT, "\n")`: tools/
+-- modkit.py's STRINGS_CALL harvester matches a quoted string literal
+-- immediately inside Strings.source(...)/Strings(...), not an arbitrary
+-- expression, so a computed argument here would be invisible to every
+-- translator's `modkit.py translation ... --refresh` scaffold despite the
+-- runtime lookup working fine -- caught by an independent review. Keep
+-- these two byte-for-byte in sync with OVERWRITE_PROMPT/SAVING_PROMPT
+-- above (checked by tests/engine/gen2_save_menu_translation_test.lua).
+local OVERWRITE_PROMPT_SOURCE = Strings.source("There is already a\nsave file. Is it")
+local SAVING_PROMPT_SOURCE = Strings.source("SAVING… DON'T TURN\nOFF THE POWER.")
 
 -- Splits a Strings()-resolved "line one\nline two" into the two-slot table
 -- drawPanel's fixed-position Chrome.print calls expect; a translation with no
