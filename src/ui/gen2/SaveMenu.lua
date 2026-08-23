@@ -56,13 +56,24 @@ local TIME_X, TIME_Y = 13, 8
 local YESNO_X, YESNO_Y, YESNO_W, YESNO_H = 0, 7, 6, 5
 
 -- AlreadyASaveFileText (AskOverwriteSaveFile, engine/menus/save.asm:47) and
--- SavingDontTurnOffThePower's own line, shared with the PC's CHANGE BOX save.
--- Strings.source keeps these in the catalog harvest despite being built at
--- require time, before any mod's Strings.load has a catalog to answer from
--- (same split Clock.DAY_NAMES/Clock.weekdayName uses); prompt() below does
--- the live Strings() lookup once a catalog might actually be loaded.
-local OVERWRITE_PROMPT = Strings.source("There is already a\nsave file. Is it")
-local SAVING_PROMPT = Strings.source("SAVING… DON'T TURN\nOFF THE POWER.")
+-- SavingDontTurnOffThePower's own line, shared with the PC's CHANGE BOX save
+-- (src/ui/gen2/PcMenu.lua:savePrompt(), which returns this two-slot table
+-- straight through to its own lines[1]/lines[2] Chrome.print calls, so the
+-- table shape here is a cross-file contract that must not change).
+local OVERWRITE_PROMPT = { "There is already a", "save file. Is it" }
+local SAVING_PROMPT = { "SAVING… DON'T TURN", "OFF THE POWER." }
+
+-- The same two prompts as a single \n-joined Strings.source() key, used only
+-- by this screen's own prompt() below (PcMenu keeps reading the untranslated
+-- table above unchanged). One key lets a translation reorder the whole
+-- sentence rather than two independently-translated fragments, and lets a
+-- cart whose own translation shows it on ONE line (German's SAVING prompt
+-- has no second line at all) say so directly -- the per-line "{RAM:...}"-
+-- style split load_engine_overrides uses elsewhere requires a non-empty
+-- override for every line, so it cannot express "this line is blank" the
+-- way an embedded "\n"-less string can.
+local OVERWRITE_PROMPT_SOURCE = Strings.source(table.concat(OVERWRITE_PROMPT, "\n"))
+local SAVING_PROMPT_SOURCE = Strings.source(table.concat(SAVING_PROMPT, "\n"))
 
 -- Splits a Strings()-resolved "line one\nline two" into the two-slot table
 -- drawPanel's fixed-position Chrome.print calls expect; a translation with no
@@ -185,10 +196,10 @@ function SaveMenu:prompt()
   if self.phase == "overwrite" then
     -- AlreadyASaveFileText when the file is this player's; AnotherSaveFileText
     -- when the ID differs.  Only the first can happen here.
-    return twoLines(Strings(OVERWRITE_PROMPT))
+    return twoLines(Strings(OVERWRITE_PROMPT_SOURCE))
   end
   if self.phase == "saving" then
-    return twoLines(Strings(SAVING_PROMPT))
+    return twoLines(Strings(SAVING_PROMPT_SOURCE))
   end
   if self.phase == "done" then
     if self.saved then

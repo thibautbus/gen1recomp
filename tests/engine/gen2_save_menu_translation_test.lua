@@ -147,4 +147,21 @@ do
   T.check(not Strings.active(), "the catalog is unloaded for the checks after this one")
 end
 
+-- src/ui/gen2/PcMenu.lua:savePrompt() returns SaveMenu.OVERWRITE_PROMPT/
+-- SAVING_PROMPT straight through to its own `lines[1]`/`lines[2]`
+-- Chrome.print calls (the PC's CHANGE BOX save uses the same two prompts).
+-- Indexing a plain string with [1]/[2] returns nil, not characters, so this
+-- shape is a cross-file contract: it caught a real regression during review,
+-- where routing these through a single Strings.source()-wrapped string (to
+-- translate SaveMenu's own screen) silently turned them into non-table
+-- values and left PcMenu's overwrite/saving prompt blank.
+do
+  T.eq(type(SaveMenu.OVERWRITE_PROMPT), "table", "OVERWRITE_PROMPT stays a table for PcMenu.lua")
+  T.eq(SaveMenu.OVERWRITE_PROMPT[1], "There is already a", "and its first line stays indexable")
+  T.eq(SaveMenu.OVERWRITE_PROMPT[2], "save file. Is it", "and its second line")
+  T.eq(type(SaveMenu.SAVING_PROMPT), "table", "SAVING_PROMPT stays a table for PcMenu.lua")
+  T.eq(SaveMenu.SAVING_PROMPT[1], "SAVING… DON'T TURN", "and its first line stays indexable")
+  T.eq(SaveMenu.SAVING_PROMPT[2], "OFF THE POWER.", "and its second line")
+end
+
 T.finish("gen2_save_menu_translation_test")
