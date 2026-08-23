@@ -26,6 +26,7 @@
 local Chrome = require("src.ui.gen2.Chrome")
 local Save = require("src.core.gen2.Save")
 local Sound = require("src.core.Sound")
+local Strings = require("src.core.Strings")
 
 local SaveMenu = {}
 SaveMenu.__index = SaveMenu
@@ -56,8 +57,21 @@ local YESNO_X, YESNO_Y, YESNO_W, YESNO_H = 0, 7, 6, 5
 
 -- AlreadyASaveFileText (AskOverwriteSaveFile, engine/menus/save.asm:47) and
 -- SavingDontTurnOffThePower's own line, shared with the PC's CHANGE BOX save.
-local OVERWRITE_PROMPT = { "There is already a", "save file. Is it" }
-local SAVING_PROMPT = { "SAVING… DON'T TURN", "OFF THE POWER." }
+-- Strings.source keeps these in the catalog harvest despite being built at
+-- require time, before any mod's Strings.load has a catalog to answer from
+-- (same split Clock.DAY_NAMES/Clock.weekdayName uses); prompt() below does
+-- the live Strings() lookup once a catalog might actually be loaded.
+local OVERWRITE_PROMPT = Strings.source("There is already a\nsave file. Is it")
+local SAVING_PROMPT = Strings.source("SAVING… DON'T TURN\nOFF THE POWER.")
+
+-- Splits a Strings()-resolved "line one\nline two" into the two-slot table
+-- drawPanel's fixed-position Chrome.print calls expect; a translation with no
+-- "\n" at all (single-line messages like "Could not save.") lands whole on
+-- the first slot, matching the untranslated code's own { text, "" } shape.
+local function twoLines(text)
+  local first, second = text:match("^(.-)\n(.*)$")
+  return { first or text, second or "" }
+end
 
 function SaveMenu:wantsFillScale() return true end
 function SaveMenu:drawsWidescreen() return true end
@@ -171,18 +185,18 @@ function SaveMenu:prompt()
   if self.phase == "overwrite" then
     -- AlreadyASaveFileText when the file is this player's; AnotherSaveFileText
     -- when the ID differs.  Only the first can happen here.
-    return OVERWRITE_PROMPT
+    return twoLines(Strings(OVERWRITE_PROMPT))
   end
   if self.phase == "saving" then
-    return SAVING_PROMPT
+    return twoLines(Strings(SAVING_PROMPT))
   end
   if self.phase == "done" then
     if self.saved then
-      return { self:playerName() .. " saved", "the game." }
+      return twoLines(Strings("%s saved\nthe game.", self:playerName()))
     end
-    return { "Could not save.", "" }
+    return twoLines(Strings("Could not save."))
   end
-  return { "Would you like to", "save the game?" }
+  return twoLines(Strings("Would you like to\nsave the game?"))
 end
 
 function SaveMenu:drawPanel()
@@ -190,10 +204,10 @@ function SaveMenu:drawPanel()
   local summary = Save.summary(self.save)
   Chrome.box(PANEL_X, PANEL_Y, PANEL_W, PANEL_H)
   if summary then
-    Chrome.print("PLAYER " .. summary.name, LABEL_X, LABEL_Y)
-    Chrome.print("BADGES", LABEL_X, LABEL_Y + 2)
-    Chrome.print("POKéDEX", LABEL_X, LABEL_Y + 4)
-    Chrome.print("TIME", LABEL_X, LABEL_Y + 6)
+    Chrome.print(Strings("PLAYER %s", summary.name), LABEL_X, LABEL_Y)
+    Chrome.print(Strings("BADGES"), LABEL_X, LABEL_Y + 2)
+    Chrome.print(Strings("POKéDEX"), LABEL_X, LABEL_Y + 4)
+    Chrome.print(Strings("TIME"), LABEL_X, LABEL_Y + 6)
     -- PrintNum fills its field from the left, space padded.
     Chrome.print(Chrome.number(summary.badges, 2), BADGES_X, BADGES_Y)
     Chrome.print(Chrome.number(summary.caught, 3), DEX_X, DEX_Y)
@@ -211,8 +225,8 @@ function SaveMenu:drawPanel()
 
   if self.phase == "confirm" or self.phase == "overwrite" then
     Chrome.box(YESNO_X, YESNO_Y, YESNO_W, YESNO_H)
-    Chrome.print("YES", YESNO_X + 2, YESNO_Y + 1)
-    Chrome.print("NO", YESNO_X + 2, YESNO_Y + 3)
+    Chrome.print(Strings("YES"), YESNO_X + 2, YESNO_Y + 1)
+    Chrome.print(Strings("NO"), YESNO_X + 2, YESNO_Y + 3)
     Chrome.cursor(YESNO_X + 1, YESNO_Y + (self.choice == 1 and 1 or 3))
   end
   love.graphics.setColor(1, 1, 1, 1)
