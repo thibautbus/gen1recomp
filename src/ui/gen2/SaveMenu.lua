@@ -24,6 +24,7 @@
 -- one-line call.
 
 local Chrome = require("src.ui.gen2.Chrome")
+local Logger = require("src.core.Logger")
 local Save = require("src.core.gen2.Save")
 local Sound = require("src.core.Sound")
 local Strings = require("src.core.Strings")
@@ -88,8 +89,20 @@ local SAVING_PROMPT_SOURCE = Strings.source("SAVING… DON'T TURN\nOFF THE POWER
 -- drawPanel's fixed-position Chrome.print calls expect; a translation with no
 -- "\n" at all (single-line messages like "Could not save.") lands whole on
 -- the first slot, matching the untranslated code's own { text, "" } shape.
+--
+-- Only the FIRST "\n" is a line break: drawPanel's two Chrome.print calls are
+-- the only room this box has, so a translation needing a third line has
+-- nowhere on screen to put it. A translation with a second embedded "\n"
+-- warns once (by source key) rather than silently drawing the literal
+-- newline byte as garbage glyph data on the second line.
+local warnedTooManyLines = {}
 local function twoLines(text)
   local first, second = text:match("^(.-)\n(.*)$")
+  if second and second:find("\n", 1, true) and not warnedTooManyLines[text] then
+    warnedTooManyLines[text] = true
+    Logger.warn("SaveMenu: translation of %q has more than two lines; " ..
+      "only the first two fit this box", text)
+  end
   return { first or text, second or "" }
 end
 
