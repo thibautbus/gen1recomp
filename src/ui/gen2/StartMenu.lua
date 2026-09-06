@@ -346,12 +346,18 @@ function StartMenu:draw()
   if self.phase == "confirmContest" then
     -- pokecrystal data/text/common_2.asm:1381
     Chrome.textbox(0, 12, 18, 4)
-    Chrome.print("Would you like to", 1, 14)
-    Chrome.print("end the Contest?", 1, 16)
+    -- One catalog key ("Would you like to" alone has no stable translation
+    -- out of context), matching every other confirmation prompt in this
+    -- port (src/ui/StartMenu.lua, src/ui/gen2/SaveMenu.lua). Printed via
+    -- Chrome.printWrapped, same as InitClock.lua's own call: this box only
+    -- has room for two rows (y 14/16, step 2), and printWrapped wraps by
+    -- both the translated \n and pixel width, unlike a hand-rolled
+    -- \n-only splitter.
+    Chrome.printWrapped(Strings("Would you like to\nend the Contest?"), 1, 14, 18, 2, 2)
     -- pokecrystal home/menu.asm:418
     Chrome.box(14, 7, 6, 5)
-    Chrome.print("YES", 16, 8)
-    Chrome.print("NO", 16, 10)
+    Chrome.print(Strings("YES"), 16, 8)
+    Chrome.print(Strings("NO"), 16, 10)
     Chrome.cursor(15, self.confirmChoice == 1 and 8 or 10)
     return
   end
