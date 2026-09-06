@@ -6978,7 +6978,7 @@ function World:startBattle(opts, onDone)
               local name, className = Phone.contactName(call.contact,
                 game.data and game.data.trainers)
               self.queuedScript =
-                require("src.core.gen2.PhoneRing").script(call, name, className)
+                require("src.core.gen2.PhoneRing").script(call, name and Strings(name), className)
             end
           end
         end
@@ -7270,9 +7270,10 @@ function World:momTriesToBuy()
   script[#script + 1] = { op = "end" }
   local Phone = require("src.core.gen2.Phone")
   if self.vm then self.vm.curPhoneCaller = Phone.PHONECONTACT_MOM end
+  local momName = Phone.NON_TRAINER_NAMES[Phone.PHONECONTACT_MOM]
   self.queuedScript = require("src.core.gen2.PhoneRing").script(
     { contact = Phone.PHONECONTACT_MOM, scriptKey = script },
-    Phone.NON_TRAINER_NAMES[Phone.PHONECONTACT_MOM])
+    momName and Strings(momName))
   -- A doll changes what stands in the bedroom, and the room is rebuilt from
   -- the flags on a MAP LOAD -- so nothing has to be dropped here, the same
   -- way Decorations' own menu leaves it to the PC's warp.
@@ -10873,7 +10874,7 @@ function World:receivePhoneCall(call)
     local name, className = Phone.contactName(call.contact,
       self.game and self.game.data and self.game.data.trainers)
     self.vm.curPhoneCaller = call.contact
-    local rows = require("src.core.gen2.PhoneRing").script(call, name,
+    local rows = require("src.core.gen2.PhoneRing").script(call, name and Strings(name),
       className)
     if self.vm:start(rows) then return true end
   end

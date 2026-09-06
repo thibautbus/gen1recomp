@@ -73,6 +73,30 @@ local function meridiem(hour)
   return Strings(hour < 12 and AM_LABEL or PM_LABEL)
 end
 
+-- src/core/gen2/Phone.lua owns the phone contact list, so its non-trainer
+-- names (Phone.NON_TRAINER_NAMES and the same values duplicated onto
+-- Phone.CONTACTS[1..4].name) arrive here as plain return values from
+-- Phone.contactName(), the same "model returns raw text, UI marks it for the
+-- catalog and looks it up" split src/ui/gen2/BoxMenu.lua's
+-- BOX_FAILURE_SOURCES uses for Boxes.lua's refusals.
+--
+-- Deliberately retyped rather than derived from Phone.NON_TRAINER_NAMES: the
+-- four literals below are what tools/modkit.py's STRINGS_CALL regex actually
+-- harvests into the translatable catalog (see its own comment -- "a call
+-- whose source string is built at runtime... is not meant to match here").
+-- Phone.NON_TRAINER_NAMES[Phone.PHONECONTACT_MOM] would be correct at
+-- runtime and invisible to that harvester, silently dropping these four
+-- keys from every generated catalog. If Phone.lua's own copy is ever
+-- renamed, these are meant to be updated by hand to match, the same
+-- MoveEffects.lua's STAT_LABEL table's own comment already documents for
+-- the identical constraint.
+local PHONE_CONTACT_NAME_SOURCES = {
+  Strings.source("MOM"),
+  Strings.source("BIKE SHOP"),
+  Strings.source("BILL"),
+  Strings.source("PROF.ELM"),
+}
+
 -- ---------------------------------------------------------------- the radio
 --
 -- engine/pokegear/radio.asm is not a text table: it is a jumptable of code.
@@ -1151,7 +1175,7 @@ end
 -- non-trainer is its NonTrainerCallerNames string and nothing under it.
 function Pokegear:contactRow(id)
   local name, className = Phone.contactName(id, self.trainers)
-  return (name or "----------") .. ":", className
+  return (name and Strings(name) or "----------") .. ":", className
 end
 
 function Pokegear:update(_dt)
@@ -1679,6 +1703,7 @@ function Pokegear:callContact(id)
   if world then world:playSfxNamed("Sfx_Call", 106) end
   local call = Phone.call(self.save, id, context)
   local name, className = Phone.contactName(id, self.trainers)
+  name = name and Strings(name)
   call.name, call.className = name, className
   if call.kind == "outofarea" then
     call.text = self:phoneText("OutOfArea")

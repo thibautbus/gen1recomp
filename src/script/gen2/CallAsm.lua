@@ -46,6 +46,7 @@
 -- re-transcribes a table that has a home elsewhere.
 
 local Phone = require("src.core.gen2.Phone")
+local Strings = require("src.core.Strings")
 
 local CallAsm = {}
 
@@ -261,7 +262,7 @@ local function showCallerBox(ctx)
   local contact = (ctx.vm and ctx.vm.curPhoneCaller) or 0
   local data = ctx.game and ctx.game.data
   local name, className = Phone.contactName(contact, data and data.trainers)
-  local box = require("src.ui.gen2.CallerBox").new(name, className)
+  local box = require("src.ui.gen2.CallerBox").new(name and Strings(name), className)
   box[CALLER_BOX] = true
   stack:push(box)
 end
