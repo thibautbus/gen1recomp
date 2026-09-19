@@ -227,6 +227,8 @@ function MapSectionsExtract.getInfo(secId, mapId, floorNum)
     end
   end
 
+  local baseName = name
+
   -- Append floor suffix (pokefirered/src/map_name_popup.c:205)
   local floor = tonumber(floorNum) or 0
   if floor == 127 then
@@ -241,6 +243,7 @@ function MapSectionsExtract.getInfo(secId, mapId, floorNum)
     secId = secId or 88,
     id = info.id,
     name = name,
+    baseName = baseName,
     rawName = info.name,
     theme = theme,
     floorNum = floor,
