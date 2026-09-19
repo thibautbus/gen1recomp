@@ -4,6 +4,7 @@ local MapIds = require("src.core.game3.map_ids")
 local Movement = require("src.core.game3.scripting.movement")
 local Flags = require("src.core.game3.scripting.flags")
 local Opcodes = require("src.core.game3.scripting.opcodes")
+local Strings = require("src.core.Strings")
 
 local Adapters = {}
 
@@ -94,11 +95,11 @@ function Adapters.stub(opts)
     end
     if op == "bufferstdstring" then
       local STD = {
-        [24] = "ITEMS POCKET",
-        [25] = "KEY ITEMS POCKET",
-        [26] = "POKé BALLS POCKET",
-        [27] = "TM CASE",
-        [28] = "BERRY POUCH",
+        [24] = Strings("ITEMS POCKET"),
+        [25] = Strings("KEY ITEMS POCKET"),
+        [26] = Strings("POKé BALLS POCKET"),
+        [27] = Strings("TM CASE"),
+        [28] = Strings("BERRY POUCH"),
       }
       return STD[tonumber(src) or -1]
     end
@@ -1276,15 +1277,15 @@ function Adapters.host(mod, game, world)
         -- pret constants/menu.h STDSTRING_*
         local STD = {
           [10] = "ITEMS",
-          [11] = "KEY ITEMS",
-          [12] = "POKé BALLS",
-          [13] = "TMs & HMs",
+          [11] = Strings("KEY ITEMS"),
+          [12] = Strings("POKé BALLS"),
+          [13] = Strings("TMs & HMs"),
           [14] = "BERRIES",
-          [24] = "ITEMS POCKET",
-          [25] = "KEY ITEMS POCKET",
-          [26] = "POKé BALLS POCKET",
-          [27] = "TM CASE",
-          [28] = "BERRY POUCH",
+          [24] = Strings("ITEMS POCKET"),
+          [25] = Strings("KEY ITEMS POCKET"),
+          [26] = Strings("POKé BALLS POCKET"),
+          [27] = Strings("TM CASE"),
+          [28] = Strings("BERRY POUCH"),
         }
         return STD[tonumber(src) or -1] or tostring(src)
       end
