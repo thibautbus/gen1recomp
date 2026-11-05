@@ -238,6 +238,11 @@ function TradeAnimView.new(game, opts)
   self.onDone = opts.onDone
   self.give, self.get = Anim.records(self.data, self.save, self.row,
     opts.given, opts.received)
+  local texts = self.eventTables.tradeTexts or {}
+  self.texts = {}
+  for _, label in pairs(Anim.TEXT) do
+    self.texts[label] = TradeMenu.cartText(self.data, label, texts[label])
+  end
   self.frame = -1
   self.beatIndex = nil
   self.picCache = {}
@@ -396,7 +401,7 @@ end
 
 function TradeAnimView.fill(body, names, buffers)
   local index = 0
-  return (tostring(body or ""):gsub("{STRBUF}", function()
+  return (tostring(body or ""):gsub("{RAM:([%w_]+)}", names):gsub("{STRBUF}", function()
     index = index + 1
     local slot = (buffers or {})[index]
     return (slot and names[slot]) or names.wOTTrademonSpeciesName or ""
@@ -408,8 +413,7 @@ end
 function TradeAnimView:lines(id)
   local label = Anim.TEXT[id]
   if not label then return nil end
-  local texts = self.eventTables.tradeTexts or {}
-  local body = texts[label]
+  local body = (self.texts or {})[label]
   local buffers = (self.eventTables.tradeBuffers or {})[label]
   if type(body) ~= "string" then
     local fallback = FALLBACK[label]

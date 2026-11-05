@@ -26,6 +26,7 @@
 -- only thing that carries the conversation on.
 
 local Chrome = require("src.ui.gen2.Chrome")
+local GameVersion = require("src.core.GameVersion")
 local NpcTrade = require("src.core.gen2.NpcTrade")
 local Screens = require("src.ui.Screens")
 local Sound = require("src.core.Sound")
@@ -64,6 +65,46 @@ local FALLBACK = {
     "Yay! I got myself\n{STRBUF}!\vThanks!"),
   TRADE_DIALOG_AFTER = Strings.source("Hi, how's my old\n{STRBUF} doing?"),
 }
+
+local SET_INDEX = {
+  TRADE_DIALOGSET_COLLECTOR = 1, TRADE_DIALOGSET_HAPPY = 2, TRADE_DIALOGSET_NEWBIE = 3, TRADE_DIALOGSET_GIRL = 4,
+}
+-- pokegold/engine/events/npc_trade.asm:380
+local GOLD_TEXTS = {
+  TRADE_DIALOG_INTRO = { "_NPCTradeIntroText1", "_NPCTradeIntroText2", "_NPCTradeIntroText3" },
+  TRADE_DIALOG_CANCEL = { "_NPCTradeCancelText1", "_NPCTradeCancelText2", "_NPCTradeCancelText3" },
+  TRADE_DIALOG_WRONG = { "_NPCTradeWrongText1", "_NPCTradeWrongText2", "_NPCTradeWrongText3" },
+  TRADE_DIALOG_COMPLETE = { "_NPCTradeCompleteText1", "_NPCTradeCompleteText2", "_NPCTradeCompleteText3" },
+  TRADE_DIALOG_AFTER = { "_NPCTradeAfterText1", "_NPCTradeAfterText2", "_NPCTradeAfterText3" },
+}
+-- pokecrystal/engine/events/npc_trade.asm:406
+local CRYSTAL_TEXTS = {
+  TRADE_DIALOG_INTRO = { "_NPCTradeIntroText1", "_NPCTradeIntroText2", "_NPCTradeIntroText2",
+    "_NPCTradeIntroText3" },
+  TRADE_DIALOG_CANCEL = { "_NPCTradeCancelText1", "_NPCTradeCancelText2", "_NPCTradeCancelText2",
+    "_NPCTradeCancelText3" },
+  TRADE_DIALOG_WRONG = { "_NPCTradeWrongText1", "_NPCTradeWrongText2", "_NPCTradeWrongText2",
+    "_NPCTradeWrongText3" },
+  TRADE_DIALOG_COMPLETE = { "_NPCTradeCompleteText1", "_NPCTradeCompleteText2", "_NPCTradeCompleteText4",
+    "_NPCTradeCompleteText3" },
+  TRADE_DIALOG_AFTER = { "_NPCTradeAfterText1", "_NPCTradeAfterText2", "_NPCTradeAfterText4",
+    "_NPCTradeAfterText3" },
+}
+-- pokecrystal/engine/events/npc_trade.asm:436-442
+local NAMED_TEXT = { NPCTradeCableText = "_NPCTradeCableText", TradedForText = "Text_NPCTraded" }
+
+function TradeMenu.textLabel(dialog, set, version)
+  if NAMED_TEXT[dialog] then return NAMED_TEXT[dialog] end
+  local texts = ((version == "crystal") and CRYSTAL_TEXTS or GOLD_TEXTS)[dialog]
+  return texts and SET_INDEX[set] and texts[SET_INDEX[set]] or nil
+end
+
+function TradeMenu.cartText(data, label, body)
+  if body == nil or label == nil then return body end
+  local text = data and data.text and data.text[label]
+  if type(text) == "string" then return text end
+  return body
+end
 
 -- The markers the extractor writes for the cart's own text controls: `para`
 -- ($51) starts a new page, `cont` ($55) scrolls one line so the new page opens
@@ -119,7 +160,7 @@ function TradeMenu.fill(body, row, data, buffers)
     wMonOrItemNameBuffer = give,
   }
   local n = 0
-  return (tostring(body or ""):gsub("{STRBUF}", function()
+  return (tostring(body or ""):gsub("{RAM:([%w_]+)}", byBuffer):gsub("{STRBUF}", function()
     n = n + 1
     return byBuffer[(buffers or {})[n] or "wStringBuffer1"]
       or byBuffer.wStringBuffer1
@@ -155,7 +196,9 @@ function TradeMenu:lineFor(dialog)
   local texts = self.eventTables.tradeTexts
   local row = texts and texts[dialog]
   local set = self.row and self.row.dialog
-  local body = (row and set and row[set]) or FALLBACK[dialog] or ""
+  local version = (self.save and self.save.version) or GameVersion.get()
+  local body = TradeMenu.cartText(self.data, TradeMenu.textLabel(dialog, set, version),
+    row and set and row[set]) or FALLBACK[dialog] or ""
   local bufRow = (self.eventTables.tradeBuffers or {})[dialog]
   local buffers = bufRow and set and bufRow[set]
   return TradeMenu.paginate(
@@ -243,14 +286,14 @@ function TradeMenu:chose(index)
   -- NPCTradeCableText is a bare PrintText (engine/events/npc_trade.asm:37-41):
   -- nothing rings under the cable line.  The sounds all belong to the
   -- animation past it (SFX_GIVE_TRADEMON / SFX_GET_TRADEMON).
-  self:sayRaw(texts.NPCTradeCableText
+  self:sayRaw(TradeMenu.cartText(self.data, NAMED_TEXT.NPCTradeCableText, texts.NPCTradeCableText)
       or Strings.source("OK, connect the\nGame Link Cable."),
     bufs.NPCTradeCableText,
     function()
       local given, received =
         NpcTrade.perform(self.data, self.save, self.row, index)
       self:playAnim(given, received, function()
-        self:sayRaw(texts.TradedForText
+        self:sayRaw(TradeMenu.cartText(self.data, NAMED_TEXT.TradedForText, texts.TradedForText)
             or Strings.source("{PLAYER} traded\n{STRBUF} for\v{STRBUF}."),
           bufs.TradedForText,
           function() self:refuse(NpcTrade.DIALOG_COMPLETE) end)
