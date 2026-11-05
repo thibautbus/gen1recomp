@@ -8,26 +8,48 @@ local function pokedexChrome() PokedexChrome=PokedexChrome or require('src.ui.ga
 local function actorOrder(a,b) return a.y<b.y or (a.y==b.y and a.id<b.id) end
 local UI={}
 function UI.install(cache)
-  UI.pack=nil
+  UI.pack=nil;UI.lines=nil
   local src=cache and cache:read('data/generated/gba/quest_log/pack.lua')
   if src then
     local f=loadstring(src,'@quest_log/pack.lua')
     if f then setfenv(f,{});UI.pack=f() end
   end
 end
+local SEG={nl='\n',para='\n',scroll='\n',player='{PLAYER}',rival='{RIVAL}'}
+local function fromIr(ir)
+  local out={}
+  for _,s in ipairs(ir) do
+    if s.t=='text' then out[#out+1]=s.s
+    elseif SEG[s.t] then out[#out+1]=SEG[s.t]
+    elseif s.t=='strvar' then out[#out+1]='{S'..s.n..'}'
+    elseif s.t=='dynamic' then out[#out+1]='{D'..s.n..'}' end
+  end
+  return table.concat(out)
+end
+local function lines()
+  local RomText=require('src.core.game3.rom_text')
+  local out={}
+  for key,text in pairs(UI.pack.text) do
+    local label='gText_QuestLog_'..key
+    out[key]=RomText.has(label) and fromIr(RomText.ir(label)) or text
+  end
+  return out
+end
 function UI.text(key,args,session)
-  local text=UI.pack and UI.pack.text[key] or ''
+  local texts=UI.lines or (UI.pack and UI.pack.text) or {}
+  local text=texts[key] or ''
   args=args or {};session=session or {}
   return (text:gsub('{([^}]+)}',function(k)
     if k=='PLAYER' then return session.name or 'RED' end
     if k=='RIVAL' then return session.rivalName or 'BLUE' end
     local v=args[k] or args[tonumber(k:match('^S(%d+)$'))] or args[k:match('^S(%d+)$')]
-    if type(v)=='table' then return UI.pack.text[v.text] or '' end
+    if type(v)=='table' then return texts[v.text] or '' end
     return tostring(v or '')
   end))
 end
 function UI.begin(session)
   if not UI.pack then return nil end
+  UI.lines=lines()
   return Q.playback(session.questLog)
 end
 local function tiles(scene,frame,over)
