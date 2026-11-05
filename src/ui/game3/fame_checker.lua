@@ -165,9 +165,67 @@ function FameCheckerUi.pack()
   return FameCheckerUi._pack
 end
 
+local IR_SOURCE = { nl = "\n", para = "\\p", scroll = "\\l", player = "{PLAYER}", rival = "{RIVAL}" }
+local function fromIr(ir)
+  local out = {}
+  for _, seg in ipairs(ir) do
+    if seg.t == "text" then out[#out + 1] = seg.s
+    elseif IR_SOURCE[seg.t] then out[#out + 1] = IR_SOURCE[seg.t]
+    elseif seg.t == "strvar" then out[#out + 1] = "{STR_VAR_" .. tostring(seg.n) .. "}" end
+  end
+  return table.concat(out)
+end
+
+local function cartText(name, i, fallback)
+  local key = RomText.key(name, i)
+  if RomText.has(key) then return fromIr(RomText.ir(key)) end
+  return fallback
+end
+
+-- pokefirered/src/fame_checker.c:164
+local NON_TRAINER_INDEX = { [0] = 0, [1] = 1, [13] = 2, [14] = 3 }
+-- pokefirered/src/fame_checker.c:246, :380, :399
+local SLOT_TABLES = {
+  flavorText = "sFameCheckerFlavorTextPointers",
+  originLocation = "sFlavorTextOriginLocationTexts",
+  originObject = "sFlavorTextOriginObjectNameTexts",
+}
+
+local function resolveTexts(pack)
+  if type(pack) ~= "table" then return nil end
+  local out = { listNames = {}, names = {}, quotes = {} }
+  for p, text in pairs(pack.listNames or {}) do
+    local i = NON_TRAINER_INDEX[p]
+    out.listNames[p] = i and cartText("sNonTrainerNamePointers", i, text) or text
+  end
+  -- pokefirered/src/fame_checker.c:209
+  for p, text in pairs(pack.names or {}) do
+    out.names[p] = cartText("sFameCheckerNameAndQuotesPointers", p, text)
+  end
+  for p, text in pairs(pack.quotes or {}) do
+    out.quotes[p] = cartText("sFameCheckerNameAndQuotesPointers", FameChecker.NUM_PERSONS + p, text)
+  end
+  for field, name in pairs(SLOT_TABLES) do
+    out[field] = {}
+    for p, row in pairs(pack[field] or {}) do
+      local cells = {}
+      for slot, text in pairs(row) do
+        cells[slot] = cartText(name, p * FameChecker.NUM_FLAVOR_TEXTS + slot, text)
+      end
+      out[field][p] = cells
+    end
+  end
+  return out
+end
+
+local function texts()
+  return FameCheckerUi._texts or FameCheckerUi.pack()
+end
+
 function FameCheckerUi.reloadAssets()
   FameCheckerUi._images = {}
   FameCheckerUi._pack = nil
+  FameCheckerUi._texts = nil
   FameCheckerUi._packTried = nil
   FameCheckerUi._names = {}
   FameCheckerUi._pageMemo = {}
@@ -217,7 +275,7 @@ function FameCheckerUi.personName(person)
 end
 
 function FameCheckerUi._personName(p)
-  local pack = FameCheckerUi.pack()
+  local pack = texts()
   local fromPack = pack and pack.listNames and pack.listNames[p]
   if type(fromPack) == "string" and fromPack ~= "" then return fromPack end
   local trainerId = FameChecker.TRAINER_IDS[p]
@@ -268,7 +326,7 @@ end
 
 -- pokefirered/src/fame_checker.c:246 sFameCheckerFlavorTextPointers
 function FameCheckerUi.flavorText(person, slot)
-  local pack = FameCheckerUi.pack()
+  local pack = texts()
   local rows = pack and pack.flavorText and pack.flavorText[tonumber(person)]
   if type(rows) ~= "table" then return nil end
   local text = rows[tonumber(slot)]
@@ -280,7 +338,7 @@ end
 function FameCheckerUi.pickModeText(person)
   local p = tonumber(person)
   if not p then return nil end
-  local pack = FameCheckerUi.pack()
+  local pack = texts()
   if not pack then return nil end
   local all = FameChecker.hasUnlockedAllFlavorTexts(FameCheckerUi._session, p)
   local rows = all and pack.quotes or pack.names
@@ -291,7 +349,7 @@ end
 
 -- pokefirered/src/fame_checker.c:1395 UpdateIconDescriptionBox
 function FameCheckerUi.iconDescription(person, slot)
-  local pack = FameCheckerUi.pack()
+  local pack = texts()
   if not pack then return nil, nil end
   local p, s = tonumber(person), tonumber(slot)
   local loc = pack.originLocation and pack.originLocation[p] and pack.originLocation[p][s]
@@ -498,6 +556,7 @@ function FameCheckerUi.show(session, opts)
   FameCheckerUi._fromBag = opts.fromBag and true or false
   FameCheckerUi._names = {}
   FameCheckerUi._pageMemo = {}
+  FameCheckerUi._texts = resolveTexts(FameCheckerUi.pack())
   FameCheckerUi._rows = nil
   FameCheckerUi._icons = {}
   FameCheckerUi._view = nil
